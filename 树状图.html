@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title></title>
+</head>
+<body>
+<div id="d0" class="treeItem"></div>
+
+<br>
+<br>
+<canvas id="myCanvas" width="850" height="550" style="border:1px solid #000000;"> 你的浏览器不支持 canvas，请升级你的浏览器。</canvas>
+
+<script type="text/javascript">
+
+		function NodeInit(x,y,size,nodeText,nodeType){
+			var c = document.getElementById('myCanvas')
+			var ctx1=c.getContext("2d");
+			ctx1.fillStyle = "rgb(7,105,173)";
+			if(nodeType=="Root")
+			{
+				
+				ctx1.fillRect(x-size/2,y-size/2,size,size);
+				ctx1.globalCompositeOperation = "destination-over"; //全局合成操作
+
+				// 绘制文字
+				ctx1.font="15px Arial";
+				// ctx1.fillText(nodeText, x+size/2+5, y+size/2-5);
+				ctx1.fillText(nodeText, x+size/2+5, y+size/2-5);
+			}
+			else if(nodeType=="Node")
+			{
+				
+				ctx1.beginPath();
+			    ctx1.arc(x,y,size,0,Math.PI*2);
+			    ctx1.closePath();
+			    ctx1.fill();
+
+			    // 绘制文字
+				ctx1.font="15px Arial";
+				// ctx1.fillText(nodeText, x+size+5, y+size/2+5);
+				ctx1.fillText(nodeText, x+size+5, y+size/2+5);
+			}
+		}
+
+ 		
+ 		// 正常树状线
+		function EdgInit1(beginX,beginY,endX,endY){
+			var ctx1 = document.getElementById("myCanvas").getContext("2d");
+			ctx1.beginPath();
+			ctx1.moveTo(beginX, beginY);
+			ctx1.lineTo(endX,endY);
+			ctx1.lineWidth=1;
+			ctx1.strokeStyle="black";
+			ctx1.stroke();
+			ctx1.closePath();
+		}
+
+		// 垂直树状线
+		function EdgInit(beginX,beginY,endX,endY)
+		{
+			var horizontalSpace =100 ;
+			var ctx1 = document.getElementById("myCanvas").getContext("2d");
+			ctx1.beginPath();
+			ctx1.moveTo(beginX, beginY);
+			ctx1.lineTo(beginX,beginY-horizontalSpace/2)
+			ctx1.lineTo(endX,beginY-horizontalSpace/2)
+			ctx1.lineTo(endX,endY);
+			ctx1.lineWidth=1;
+			ctx1.strokeStyle="black";
+			ctx1.stroke();
+			ctx1.closePath();
+		}
+
+		// 递归函数，自根节点开始(深度优先遍历)
+		function UpdateData(data){
+			UpdataNode(data[0])
+		}	
+
+
+		function UpdataNode(root){ // 深度优先遍历
+			// 改变更新系统的深度
+			if (root.fatherId == -1)
+			{
+				root.level = 0;
+			}
+			else
+			{
+				root.level = data[root.fatherId].level + 1
+			}
+			if(root.children!=null)
+			{//子节点不等于空
+
+				for(var j=0;j<root.children.length;j++)
+				{
+					if(j+1<root.children.length)
+					{
+						root.children[j].rightSiblingId = root.children[j+1].id;
+						root.children[j+1].leftsiblingId = root.children[j].id;
+					}
+					UpdataNode(root.children[j])
+				}
+			}
+		}
+
+		function levelFirst(data,arr)
+		{
+			// 层序遍历
+			// 实例化队列
+			arr.push(data[0].id)
+			levelNode(arr,0,data)
+			//console.log(arr)
+
+		}
+		// 层序遍历
+		function levelNode(items,index,data){
+				// 弹出栈元素
+				root =	null
+				root = (data[items[index]])
+				
+				if(root!=null)
+				{
+				// 根节点入栈
+					if(root.children!=null)
+					{//子节点不等于空
+						for (var j=0;j<root.children.length;j++)
+						{
+							items.push(root.children[j].id)
+						}		
+					}
+				levelNode(items,index+1,data)	
+				}
+		}
+
+
+		
+		function FindleftNeighbor(data,arr){
+			// 该函数用于确定最左节点（非兄弟）
+			for(var i=1;i<arr.length;i++)
+			{
+				// 判断有没有跟该节点同层的节点
+				if(data[arr[i]].level==data[arr[i-1]].level)
+				{
+					if(data[arr[i]].leftsiblingId != data[arr[i-1]].id)
+					{
+						//判断这些节点的左邻节点是否是他们的兄弟节点
+						data[arr[i]].leftNeighbor = data[arr[i-1]].id
+					}
+					else
+					{
+						//console.log(data[arr[i]].name)
+					}
+				}
+				else
+				{
+					// 这些节点已经是本层最左侧节点，故不存在同级左节点
+					//console.log(data[arr[i]].name)
+				}
+
+			}
+		}
+
+		// 调整布局
+		function firstWalk(node){
+			// var space = 65;
+			// var nodeSize = 30;
+			var space = 40;
+			var nodeSize = 20;
+			if(node.children == null)
+			{	// 判断该节点是否有子节点
+				// 如果当前节点为叶子节点
+				if(node.leftsiblingId!=null)
+				{
+					// 该节点有左兄弟，计算相对位置
+					node.prelim = data[node.leftsiblingId].prelim + space + nodeSize;
+				}
+				else  //如果该节点没有左兄弟prelim记为0
+				{
+					node.prelim = 0 ;
+				}
+			}
+			else // 计算非叶子节点
+			{
+				// 先计算所有子节点的位置
+				var leftPrelim = 0;
+				var rightPrelim =0;
+				var nodeChild = null
+				nodeChild = node.children[0];    // 一个节点的最左孩子
+				firstWalk(nodeChild);
+				leftPrelim = node.children[0].prelim;
+				
+				while(nodeChild.rightSiblingId!=null&&nodeChild.rightSiblingId!=undefined)
+				{
+					nodeChild = data[nodeChild.rightSiblingId]
+					firstWalk(nodeChild);
+				}
+				rightPrelim = nodeChild.prelim;
+				var midPoint = (leftPrelim + rightPrelim)/2   // 定位到子节点集合的中心位置
+
+				// 如果当前节点有左兄弟，prelim计算相对位置,计算modifier
+				if(node.leftsiblingId!=null)
+				{
+
+					node.prelim = data[node.leftsiblingId].prelim +space +nodeSize;
+					node.modifier = node.prelim - midPoint;
+
+					// 计算子树移动距离,当前深度节点分摊偏移
+					apportion(node);
+				}
+				else  // 没有左兄弟，prelim记子节点集合的中心位置
+				{
+					node.prelim = midPoint;
+				}
+			}
+		}
+
+		// function secondWalk(modSom,node){
+		// 	if(node!=null)
+		// 	{
+		// 		// 根据prelim和偏移值计算x，根据深度计算y
+		// 		node.x = node.prelim + modSom;
+		// 		node.y = node.level *100+40;
+
+
+		// 		// 遍历子节点，子节点的偏移累加父节点prelim
+		// 		if(node.children!=null)
+		// 		{//子节点不等于空
+
+		// 			for(var j=0;j<node.children.length;j++)
+		// 			{
+		// 				secondWalk(modSom+node.modifier,node.children[j])
+					
+		// 			}
+		// 		}
+		// 	}
+		// }
+
+		function secondWalk(modSom,node){
+			if(node!=null)
+			{
+				console.log(node.modifier)
+				// 根据prelim和偏移值计算x，根据深度计算y
+				node.x = node.prelim + modSom;
+				node.y = node.level *100+40;
+
+
+				// 遍历子节点，子节点的偏移累加父节点prelim
+				if(node.children!=null)
+				{//子节点不等于空
+
+					for(var j=0;j<node.children.length;j++)
+					{
+						var modifier = 0
+						if(node.modifier!=null&&node.modifier!=undefined)
+							modifier =node.modifier
+						
+						secondWalk(modSom+modifier,node.children[j])
+					
+					}
+				}
+			}
+		}
+
+
+		function getLeftMost(node,level,depth){
+			if(depth <= level)
+				return node;
+			else if(node.children == null||node.children==undefined)
+				return null;
+			else
+			{
+				var rightMost = node.children[0];
+				leftMost = getLeftMost(rightMost, level + 1,depth)
+				while(leftMost==null && rightMost.rightSiblingId!=null)
+				{
+					rightMost = data[rightMost.rightSiblingId];
+					leftMost = getLeftMost(rightMost , level + 1,depth)
+				}
+				return leftMost;
+			}
+			
+		}
+
+		function apportion(node){
+			
+			var leftMost = null;
+			var neighbor = null;
+			leftMost = node.children[0];            // 当前节点下移一行，取最左孩子
+
+			neighbor = data[leftMost.leftNeighbor]; //下移后左节点的左邻居，进行比较
+			var CompareDepth = 1;
+			var leftModSum,rightModSum;
+			while (leftMost!=null&&neighbor!=null)
+			{
+			
+				// 左孩子和左孩子节点的邻居节点都存在
+				// 这两个节点都在，可以进行比较，累加其父节点的modifier（即理想位置）
+				leftModSum = 0.0;
+				rightModSum = 0.0;
+
+
+				var ancestorLeftmost = null;
+				var ancestorNeighbor = null;
+				ancestorLeftmost = leftMost;
+				ancestorNeighbor = neighbor;
+
+
+				// 从子节点往上遍历到当前深度
+				for (var i=0;i<CompareDepth;i++)
+				{
+					// 下移一个深度
+					ancestorLeftmost = data[ancestorLeftmost.fatherId];
+					ancestorNeighbor = data[ancestorNeighbor.fatherId];
+
+					// console.log(i+node.name+"他的ancestorLeftmost节点为"+ancestorLeftmost.name+"、他的ancestorNeighbor节点为"+ancestorNeighbor.name)
+					if(ancestorLeftmost==null||ancestorNeighbor==null)
+						continue;
+					rightModSum += ancestorLeftmost.modifier;
+					leftModSum += ancestorNeighbor.modifier;
+					
+				}
+
+				var moveDistance = (neighbor.prelim + leftModSum + 80) - (leftMost.prelim + rightModSum);
+
+				// 计算后应向右偏移，当前列的所以节点分摊右移
+				if(moveDistance > 0.0)
+				{
+					var tempPtr = null;
+					tempPtr = node;
+					var leftsibling = 0;
+					//往左数到子节点邻居的父节点
+					while(tempPtr!=null &&ancestorNeighbor!=null&& tempPtr.id!=ancestorNeighbor.id)
+					{
+						// 主要用于检测有几个兄弟（用于计算分摊的偏移量）
+						leftsibling = leftsibling + 1;
+						tempPtr = data[tempPtr.leftsiblingId];
+					}
+					// leftsibling = data[tempPtr.fatherId].children.length
+
+					//从当前节点到邻居父节点，对所有节点进行移位
+					if(tempPtr!=null)
+					{
+						var portion = moveDistance/leftsibling;
+						tempPtr = node;
+						while(tempPtr!=null &&ancestorNeighbor!=null&&tempPtr!=ancestorNeighbor)    
+						{
+							tempPtr.prelim = tempPtr.prelim + moveDistance;
+							tempPtr.modifier = tempPtr.modifier + moveDistance;
+							moveDistance = moveDistance - portion;
+							tempPtr = data[tempPtr.leftsiblingId];
+						}
+					}
+					else
+					{
+						// return;
+					}
+				}
+				CompareDepth += 1;
+				if(leftMost.children==null)        //leftMost.children[0]==null||leftMost.children[0]==undefined||
+				{								   //当前深度，查找第一个有子节点的，取最左子节点
+					// console.log(111)
+					// console.log(leftMost);
+					leftMost = getLeftMost(node,0,CompareDepth)
+					// console.log(leftMost)
+				}
+				else
+					leftMost = leftMost.children[0];
+				if (leftMost!=null&&leftMost.leftNeighbor!=null)
+					neighbor = data[leftMost.leftNeighbor]
+			}
+		}
+
+
+
+	let data = [
+    {
+        "id": "0",
+        "name": "O",
+        "fatherId": "-1",
+        "x":425,
+        "y":40,
+    },
+    {
+        "id": "1",
+        "name": "E",
+        "fatherId": "0",        
+        "x":850/3,
+        "y":140,
+    },
+    {
+        "id": "2",
+        "name": "F",
+        "fatherId": "0",        
+        "x":850/3*2,
+        "y":140,
+    },
+    {
+        "id": "3",
+        "name": "N",
+        "fatherId": "0",        
+        "x":150.5,
+        "y":240,
+    },
+    {
+        "id": "4",
+        "name": "A",
+        "fatherId": "1", 
+        "x":850/3,
+		"y":240,       
+        
+    },
+
+    {
+        "id": "5",
+        "name": "D",
+        "fatherId": "1",        
+        "x":850/3*2+100,
+        "y":240,
+    }
+];
+
+data.push({
+	"id":String(data.length),
+	"name":"G",
+	"fatherId":"3",
+	"x":850/3,
+	"y":340,   
+})
+data.push({
+	"id":String(data.length),
+	"name":"M",
+	"fatherId":"3",
+	"x":850/3,
+	"y":340,   
+})
+data.push({
+	"id":String(data.length),
+	"name":"B",
+	"fatherId":"5",
+	"x":850/3,
+	"y":340,   
+})
+data.push({
+	"id":String(data.length),
+	"name":"C",
+	"fatherId":"5",
+	"x":850/3,
+	"y":340,   
+})
+data.push({
+	"id":String(data.length),
+	"name":"H",
+	"fatherId":"7",
+	"x":850/3,
+	"y":340,   
+})
+data.push({
+	"id":String(data.length),
+	"name":"I",
+	"fatherId":"7",
+	"x":850/3,
+	"y":340,   
+})
+data.push({
+	"id":String(data.length),
+	"name":"J",
+	"fatherId":"7",
+	"x":850/3,
+	"y":340,   
+})
+data.push({
+	"id":String(data.length),
+	"name":"K",
+	"fatherId":"7",
+	"x":850/3,
+	"y":340,   
+})
+data.push({
+	"id":String(data.length),
+	"name":"L",
+	"fatherId":"7",
+	"x":850/3,
+	"y":340,   
+})
+
+
+
+	// 处理数据
+	const map = {};
+	const val = [];
+	data.forEach((item) => {
+	    map[item.id] = item;
+	});
+	data.forEach((item) =>{
+		item.level = 0;
+		item.prelim = 0;
+		item.modifier =0;
+		item.children = null;
+		rightSiblingId = "-1";
+		leftsiblingId = "-1";
+		leftNeighbor = "-1"
+
+	});
+	data.forEach((item) => {
+	    const parent = map[item.fatherId];
+	    if (parent) {
+	        (parent.children || (parent.children = [])).push(item);
+	    } else {
+	        val.push(item);
+	    }
+	});
+	console.log(data)
+
+
+	UpdateData(data);
+
+	
+
+		let arr = []; 
+		levelFirst(data,arr)
+		FindleftNeighbor(data,arr)
+		// 调整布局
+		//var modSom = 9
+		firstWalk(data[0]);
+		secondWalk(90,data[0]);
+
+		//生成节点
+		for(var i=0;i<data.length;i++)
+		{
+			//生成节点
+			if (i==0) {
+				NodeInit(data[i].x,data[i].y,30,data[i].name,"Root")
+			}
+			else
+			{
+				NodeInit(data[i].x,data[i].y,20,data[i].name,"Node")
+			}
+			
+		}
+
+
+		//生成连线
+		//子找父
+		for(var i=0;i<data.length;i++)
+		{
+			if(data[i].fatherId>=0)
+			{
+				EdgInit(data[i].x , data[i].y , data[parseInt(data[i].fatherId)].x , data[parseInt(data[i].fatherId)].y );
+			}
+		}
+
+		console.log(data)
+		//先生成各层级的数据节点，先不管位置y,从下至上层进行节点定位
+
+</script>
+</body>
+</html>
